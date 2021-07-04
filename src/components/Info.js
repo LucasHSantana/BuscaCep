@@ -1,15 +1,14 @@
 import React, { Component } from "react";
 import { View, Text, StyleSheet } from "react-native";
 
-
 export default class Info extends Component{
- 
+
     render(props){
         return(
             <View style={styles.container}>
                 <View style={styles.innerContainer}>
                     <Text>Teste</Text>
-                </View>            
+                </View>                            
             </View>
             
         )

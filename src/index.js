@@ -15,6 +15,8 @@ import { AWS_API_KEY } from '@env'
 import api from './services/api'
 import Header from './components/Header'
 
+import { AdMobBanner } from "expo-ads-admob";
+
 const COLOR_HEADER = '#9F75F0'
 const COLOR_CONTENT = '#F0BB81'
 
@@ -22,7 +24,7 @@ const QTD_ITEMS = 50
 
 const initialState = {    
     error: '',
-    text: '',    
+    text: '17204280',    
     isLoading: false,
     pagini: 1,
     pagfim: QTD_ITEMS,
@@ -30,8 +32,18 @@ const initialState = {
     enderecos: [],
 }
 
+const testID = 'ca-app-pub-3940256099942544/6300978111';
+const productionID = 'ca-app-pub-1688933571403515/5363144067';
+
 export default class Main extends Component{ 
-    state = initialState    
+    state = initialState   
+    
+    constructor(props){
+        super(props);
+
+        // Is a real device and running in production.
+        const adUnitID = Constants.isDevice && !__DEV__ ? productionID : testID;
+    }
 
     clearState = () => {
         this.setState(initialState) // Retorna o state para os dados iniciais
@@ -81,6 +93,8 @@ export default class Main extends Component{
             }
 
             const response = await api.post('/busca_endereco_geral', data, config) // Envia a requisição
+
+            console.log(response.data)
             
             if (!response.data.errorMessage){            
                 const retorno = JSON.parse(response.data)
@@ -152,6 +166,11 @@ export default class Main extends Component{
         }
     }
 
+    errorBanner(){
+        //
+        return
+    }
+
     render(){
         return(
             <View style={styles.container}>
@@ -179,7 +198,8 @@ export default class Main extends Component{
 
 
                 { (this.state.enderecos.length > 0) &&
-                    <FlatList                         
+                    <FlatList   
+                        styles={styles.lista}                      
                         onEndReached={this.onEndScroll}
                         data = {this.state.enderecos}
                         keyExtractor = {(item) => item.cep}
@@ -196,6 +216,13 @@ export default class Main extends Component{
                         }}
                     />
                 }   
+
+                <AdMobBanner                    
+                    bannerSize="smartBannerLandscape"
+                    adUnitID="ca-app-pub-3940256099942544/6300978111" 
+                    servePersonalizedAds={false}
+                    onDidFailToReceiveAdWithError={this.errorBanner} 
+                />
                 
             </View>
 
@@ -220,7 +247,7 @@ const styles = StyleSheet.create({
     },
 
     text: {
-        fontSize: 20,        
+        fontSize: 14,        
     },
 
     textInput: {
@@ -282,5 +309,9 @@ const styles = StyleSheet.create({
         zIndex: 999,                        
         justifyContent: 'center',                        
         backgroundColor: '#88888877',
-    }    
+    },
+
+    lista: {
+        marginBottom: 20
+    }, 
 })
