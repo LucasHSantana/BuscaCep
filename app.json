@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "BuscaCep2",
-    "slug": "BuscaCep2",
-    "version": "1.0.0",
+    "name": "Busca Cep",
+    "slug": "Busca-Cep",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#edb272"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -20,12 +20,15 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.lucashesantana.buscacep",
+      "versionCode": 2,
+      "permissions": [],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "config": {       
-        "googleMobileAdsAppId": "ca-app-pub-1688933571403515~9302389070" 
+      "config": {
+        "googleMobileAdsAppId": "ca-app-pub-3940256099942544~6300978111" 
       }
     },
     "web": {

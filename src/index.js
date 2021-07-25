@@ -8,7 +8,9 @@ import {
     Text,     
     Keyboard, 
     ActivityIndicator,
-    FlatList} from 'react-native'
+    FlatList,
+    TouchableOpacity,
+    Linking} from 'react-native'
 
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import { AWS_API_KEY } from '@env'
@@ -16,37 +18,41 @@ import api from './services/api'
 import Header from './components/Header'
 
 import { AdMobBanner } from "expo-ads-admob";
+import Constants from 'expo-constants';
 
-const COLOR_HEADER = '#9F75F0'
-const COLOR_CONTENT = '#F0BB81'
+const COLOR_HEADER = '#8c58f0'
+const COLOR_CONTENT = '#edb272'
 
 const QTD_ITEMS = 50
 
 const initialState = {    
     error: '',
-    text: '17204280',    
-    isLoading: false,
-    pagini: 1,
-    pagfim: QTD_ITEMS,
-    total: 0,
+    text: '',    
+    isLoading: false,    
     enderecos: [],
-}
+} 
 
-const testID = 'ca-app-pub-3940256099942544/6300978111';
-const productionID = 'ca-app-pub-1688933571403515/5363144067';
+const productionID = "ca-app-pub-1688933571403515/5363144067"
+const testID = "ca-app-pub-3940256099942544/6300978111"
 
 export default class Main extends Component{ 
-    state = initialState   
-    
-    constructor(props){
-        super(props);
+    state = initialState
 
-        // Is a real device and running in production.
-        const adUnitID = Constants.isDevice && !__DEV__ ? productionID : testID;
+    constructor(props){
+        super(props)        
+
+        this.pagini = 1,
+        this.pagfim = QTD_ITEMS,
+        this.total = 0,
+
+        this.adUnitID = Constants.isDevice && !__DEV__ ? productionID : testID;                 
     }
 
     clearState = () => {
         this.setState(initialState) // Retorna o state para os dados iniciais
+        this.pagini = 1
+        this.pagfim = QTD_ITEMS
+        this.total = 0
     }
 
     onChangeText = (text) => {
@@ -67,13 +73,7 @@ export default class Main extends Component{
         }
     }
 
-    getData = async () => {    
-        //Mostra mensagem de erro caso o usuário não preencha o campo    
-        if (this.state['text'] === '') {
-            this.setState({error: 'Preencha um CEP ou endereço para a consulta!'})            
-            return
-        }       
-
+    getData = async () => {                 
         this.setState({isLoading: true}) // Isto é para colocar um componente de loading na tela
 
         try {           
@@ -88,13 +88,11 @@ export default class Main extends Component{
             // corpo da requisição
             const data = {                   
                 endereco: this.state['text'], 
-                pagini: this.state['pagini'],
-                pagfim: this.state['pagfim'],                                                        
-            }
+                pagini: this.pagini,
+                pagfim: this.pagfim,
+            }            
 
-            const response = await api.post('/busca_endereco_geral', data, config) // Envia a requisição
-
-            console.log(response.data)
+            const response = await api.post('/busca_endereco_geral', data, config) // Envia a requisição               
             
             if (!response.data.errorMessage){            
                 const retorno = JSON.parse(response.data)
@@ -108,7 +106,7 @@ export default class Main extends Component{
                     const enderecos = [...this.state.enderecos] 
                     
                     retorno.dados.forEach(
-                        function(endereco){                                                        
+                        function(endereco){                                                                             
                             enderecos.push({
                                 logradouro: endereco.logradouroDNEC,
                                 bairro: endereco.bairro,
@@ -118,12 +116,13 @@ export default class Main extends Component{
                             }) // Insere o novo endereco na lista
                         }
                     )    
+
+                    this.total = retorno.total,
+                    this.pagini = this.pagfim + 1,
+                    this.pagfim = this.pagfim + QTD_ITEMS,
                     
                     this.setState({
-                        enderecos,
-                        total: retorno.total,
-                        pagini: this.state.pagfim + 1,
-                        pagfim: this.state.pagfim + QTD_ITEMS,
+                        enderecos,                                                
                     }) // Preenche o state com os dados necessários
                 } else {
                     this.setState({error: response.data.message})
@@ -142,14 +141,24 @@ export default class Main extends Component{
     }
 
 
-    onSearchPress = () => {   
+    onSearchPress = async () => {   
         /*  Ao apertar o botão de pesquisar irá:
             - Fechar o teclado
             - Limpar o state
             - Realizar a pesquisa
-        */             
+        */                    
         Keyboard.dismiss()
-        this.clearState()        
+
+        //Mostra mensagem de erro caso o usuário não preencha o campo    
+        if (this.state['text'] === '') {
+            this.setState({error: 'Preencha um CEP ou endereço para a consulta!'})            
+            return
+        }   
+        
+        this.setState({enderecos: []}) // Retorna o state para os dados iniciais
+        this.pagini = 1
+        this.pagfim = QTD_ITEMS
+        this.total = 0
         
         this.getData()        
     }    
@@ -159,21 +168,24 @@ export default class Main extends Component{
             Caso ainda tenha mais itens para ser consultados, realiza a consulta
             senão não faz nada
         */
-        if (this.state.pagini >= this.state.total || this.state.isLoading){            
+        if (this.pagini >= this.total || this.state.isLoading){            
             return
         } else {            
             this.getData()               
         }
     }
 
-    errorBanner(){
-        //
-        return
+    onClearPress = () => {
+        this.setState({text: ''})
+    }
+
+    openMap = async (log, cidade, uf) => {        
+        await Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${log}, ${cidade}, ${uf}`)
     }
 
     render(){
         return(
-            <View style={styles.container}>
+            <View style={styles.container}>                
                 { this.renderLoading() }
 
                 <StatusBar backgroundColor={COLOR_HEADER} />
@@ -184,13 +196,14 @@ export default class Main extends Component{
                     <View style={styles.textContainer}>
                         <TextInput 
                             // keyboardType='number-pad'
-                            style={[styles.text, styles.textInput]} 
-                            placeholder='CEP'
+                            style={styles.textInput} 
+                            placeholder='CEP ou Endereço'
                             multiline={true}
                             onChangeText={text => this.onChangeText(text)}    
                             value={this.state.text}                    
                         />                        
-                        <Icon name='search'  size={30} color='#666' style={ styles.searchIcon } onPress={this.onSearchPress}/>
+                        <Icon name='close' size={25} color='#666' style={ styles.clearIcon } onPress={this.onClearPress} />
+                        <Icon name='search' size={30} color='#666' style={ styles.searchIcon } onPress={this.onSearchPress}/>                        
                     </View>
                 </Header>
 
@@ -198,31 +211,33 @@ export default class Main extends Component{
 
 
                 { (this.state.enderecos.length > 0) &&
-                    <FlatList   
-                        styles={styles.lista}                      
+                    <FlatList                         
                         onEndReached={this.onEndScroll}
                         data = {this.state.enderecos}
                         keyExtractor = {(item) => item.cep}
                         renderItem = { ({item}) => {
                             return(
-                                <View key={item.cep} style={[styles.textContainer, styles.resultContainer]}>
-                                    <Text style={styles.text}>{item.logradouro}</Text>
-                                    <Text style={styles.text}>{item.bairro}</Text>
-                                    <Text style={styles.text}>{item.cidade}</Text>
-                                    <Text style={styles.text}>{item.uf}</Text>
-                                    <Text style={styles.text}>{item.cep}</Text>
-                                </View>
+                                <TouchableOpacity  key={item.cep} style={[styles.textContainer, styles.resultContainer]} onPress={() => this.openMap(item.logradouro, item.cidade, item.uf)}>
+                                    <View style={styles.linha}><Text style={[styles.text, styles.textIni]}>End.: </Text><Text style={styles.text}>{item.logradouro}</Text></View>
+                                    <View style={styles.linha}><Text style={[styles.text, styles.textIni]}>Bairro: </Text><Text style={styles.text}>{item.bairro}</Text></View>
+                                    <View style={styles.linha}><Text style={[styles.text, styles.textIni]}>Cidade: </Text><Text style={styles.text}>{item.cidade}</Text></View>
+                                    <View style={styles.linha}><Text style={[styles.text, styles.textIni]}>UF: </Text><Text style={styles.text}>{item.uf}</Text></View>
+                                    <View>
+                                        <View style={styles.linha}><Text style={[styles.text, styles.textIni]}>CEP: </Text><Text style={styles.text}>{item.cep}</Text></View>
+                                        <Icon name='location-pin' size={30} color='#666' style={ styles.mapIcon }/>
+                                    </View>
+                                </TouchableOpacity >
                             )
                         }}
                     />
-                }   
+                } 
 
-                <AdMobBanner                    
-                    bannerSize="smartBannerLandscape"
-                    adUnitID="ca-app-pub-3940256099942544/6300978111" 
-                    servePersonalizedAds={false}
-                    onDidFailToReceiveAdWithError={this.errorBanner} 
-                />
+            <AdMobBanner
+                bannerSize="fullBanner"
+                adUnitID={this.adUnitID}
+                servePersonalizedAds={false}                    
+                onDidFailToReceiveAdWithError={(errorCode) => console.log(errorCode)} 
+            />   
                 
             </View>
 
@@ -247,11 +262,16 @@ const styles = StyleSheet.create({
     },
 
     text: {
-        fontSize: 14,        
+        fontSize: 14        
+    },
+
+    textIni: {
+        fontWeight: 'bold',
     },
 
     textInput: {
-        color: '#333'
+        color: '#333',
+        fontSize: 20
     },
 
     textSearchButton: {
@@ -298,7 +318,19 @@ const styles = StyleSheet.create({
     searchIcon: {
         position: 'absolute',
         top: 10,
-        left: '90%',
+        left: '93%',
+    },
+
+    clearIcon: {
+        position: 'absolute',
+        top: 13,
+        left: '80%',
+    },
+
+    mapIcon: {
+        position: 'absolute',
+        top: -5,
+        left: '85%',
     },
 
     indicatorContainer: {
@@ -311,7 +343,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#88888877',
     },
 
-    lista: {
-        marginBottom: 20
-    }, 
+    linha: {
+      flex: 1,
+      flexDirection: 'row',  
+    }
 })
